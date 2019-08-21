@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org/DTD Mapper 3.0" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="UserMapper">
+<!--(#{username},#{password},#{classid},#{schoolid},#{schoolpw},#{name},#{sex},#{sid},#{phone},#{pic},#{lastlogintime},#{signtime})-->
+    <insert id="insertUser" useGeneratedKeys="true" keyProperty="username" parameterType="Pojo.User">
+        insert into users(username, password) values (#{username},#{password})
+    </insert>
+    <select id="verify" parameterType="String" resultType="Pojo.User">
+        select * from users where username=#{username}
+    </select>
+
+    <select id="selectAllUserName" resultType="Pojo.User">
+        select username from users
+    </select>
+    <select id="getClassStu" resultType="Pojo.User" parameterType="String">
+        select * from users where classid=#{classid}
+    </select>
+    <update id="updateSchool" parameterType="Pojo.User">
+        update users set name=#{name},sex=#{sex},classid=#{classid},phone=#{phone},schoolid = #{schoolid},schoolpw = #{schoolpw},pic=#{pic} where username = #{username}
+    </update>
+    <update id="updateNotice" parameterType="Pojo.User">
+        update users set name=#{name},sex=#{sex},classid=#{classid},phone=#{phone},schoolid = #{schoolid},schoolpw = #{schoolpw},pic=#{pic} where username = #{username}
+    </update>
+    <select id="selectUserByUsername" resultType="Pojo.User" parameterType="List">
+        select * from users where username in
+        <foreach collection="list" item="arr" open="("
+                 separator="," close=")">
+            #{arr}
+        </foreach>
+    </select>
+</mapper>

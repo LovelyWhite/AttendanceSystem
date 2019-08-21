@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org/DTD Mapper 3.0" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="TeacherMapper">
+
+    <insert id="insertTeacher" useGeneratedKeys="true" keyProperty="username" parameterType="Pojo.Teacher">
+        insert into teachers(username, password, name, sex, phone, level, description) values (#{username},#{password},#{name},#{sex},#{phone},#{level},#{description})
+        on duplicate key update username = #{username}
+    </insert>
+    <select id="verify" parameterType="String" resultType="Pojo.Teacher">
+        select * from teachers where username=#{username}
+    </select>
+    <select id="selectAllTeacherName" resultType="Pojo.Teacher">
+        select username from teachers
+    </select>
+    <select id="selectAllTeacher" resultType="Pojo.Teacher">
+        select * from teachers
+    </select>
+    <select id="selectTeacherByUsername" resultType="Pojo.Teacher" parameterType="String">
+        select * from teachers where username = #{username}
+    </select>
+    <delete id="deleteTeacherByUserName" parameterType="ArrayList">
+        delete from teachers where username in
+        <foreach collection="list" item="arr" open="("
+                 separator="," close=")">
+            #{arr}
+        </foreach>
+    </delete>
+    <update id="updateTeacher" parameterType="Pojo.Teacher">
+        update teachers set password=#{password}, name=#{name}, sex=#{sex}, phone=#{phone}, level=#{level}, description=#{description}
+        where username = #{username};
+    </update>
+</mapper>

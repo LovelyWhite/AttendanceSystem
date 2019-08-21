@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org/DTD Mapper 3.0" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="SyllabusMapper">
+
+    <insert id="addCourses" parameterType="Pojo.Syllabus">
+        insert into syllabus values (#{uid},#{cid},0,0)
+        on duplicate key update uid = #{uid}
+    </insert>
+    <select id="selectCourse" parameterType="String" resultType="Pojo.Syllabus">
+        select * from syllabus where cid=#{cid}
+    </select>
+    <delete id="deleteAll" parameterType="String">
+        delete from syllabus where uid=#{username}
+    </delete>
+    <select id="selectCourseStu"  resultType="String">
+        select uid from syllabus where cid = #{cid}
+    </select>
+    <update id="updateTotalTimeByCid" statementType="CALLABLE" parameterType="long">
+        call updateTotalTimeByCid(#{cid});
+    </update>
+    <update id="updateSTimeByCidAndUid" parameterType="Map">
+        update syllabus set stime=(stime+1)
+        where cid = #{cid} and uid = #{uid}
+    </update>
+    <select id="selectAbByUid" parameterType="long" resultType="Model.AbClassResult">
+        select courseid,name,sum(stime)as stime,sum(totaltime)as totaltime from courses,syllabus
+        where courseid=syllabus.cid
+        and  syllabus.uid = #{uid}
+        group by name
+    </select>
+</mapper>

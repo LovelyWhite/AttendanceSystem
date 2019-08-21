@@ -1,0 +1,10 @@
+<component name="libraryTable">
+  <library name="HttpClient">
+    <CLASSES>
+      <root url="file://$PROJECT_DIR$/lib/HttpClient" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+    <jarDirectory url="file://$PROJECT_DIR$/lib/HttpClient" recursive="false" />
+  </library>
+</component>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org/DTD Mapper 3.0" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="AdminMapper">
+
+    <insert id="insertAdmin" useGeneratedKeys="true" keyProperty="username" parameterType="Pojo.Admin">
+        insert into admins(username, password) values (#{username},#{password})
+    </insert>
+    <select id="verify" parameterType="String" resultType="Pojo.Admin">
+        select * from admins where username=#{username}
+    </select>
+
+    <select id="selectAllAdminName" resultType="Pojo.Admin">
+        select username from admins
+    </select>
+
+</mapper>

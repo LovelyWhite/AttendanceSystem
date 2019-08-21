@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org/DTD Mapper 3.0" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="UnReadMapper">
+    <insert  id="addUnRead" parameterType="Pojo.Unread">
+        insert into unreads values(#{uid},#{type},#{nid});
+    </insert>
+    <delete id="deleteUnRead" parameterType="Pojo.Unread">
+        delete from unreads where uid = #{uid} and  type = #{type} and nid = #{nid}
+    </delete>
+    <delete id="deleteAllUnReadByUid" parameterType="String">
+        delete from unreads where uid = #{uid}
+    </delete>
+    <delete id="deleteAllUnReadByNid" parameterType="long">
+        delete from unreads where nid = #{nid}
+    </delete>
+    <select id="selectAllUnReadByUser" parameterType="Map" resultType="Pojo.Unread">
+        select * from unreads where uid =#{uid} and type = #{type}
+    </select>
+</mapper>

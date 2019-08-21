@@ -1,0 +1,580 @@
+<head>
+    <title>河南工业大学考勤系统-后台管理</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta charset="UTF-8"> <!-- for HTML5 -->
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- BootStrap-->
+    <link rel="stylesheet" href="../bootstrap/css/bootstrap.css">
+    <link rel="stylesheet" href="../bootstrap/css/bootstrap-theme.min.css">
+    <script src="../jQuery/jquery-3.3.1.min.js"></script>
+    <script src="../bootstrap/js/bootstrap.js"></script>
+    <!-- vue -->
+    <script src="../vue/vue.min.js"></script>
+    <script src="../vue/vue-resource.min.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <!-- toastr -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <script src="../js/gobalSetting.js"></script>
+    <script>
+        function fmtDate(obj) {
+            if (obj === undefined) {
+                return "";
+            }
+            else {
+                console.log(obj);
+                var date = new Date(obj);
+                var y = 1900 + date.getYear();
+                var m = "0" + (date.getMonth() + 1);
+                var d = "0" + date.getDate();
+                return y + "-" + m.substring(m.length - 2, m.length) + "-" + d.substring(d.length - 2, d.length);
+            }
+        }
+    </script>
+    <script>
+        window.onload = function () {
+            var $record = new Vue(
+                {
+                    el: '#record',
+                    data:
+                    {
+                        checkAll: false,
+                        teachers: [],
+                        checkedRows: [],
+                        iHeadPic: "../image/headPic.jpg",
+                        iUsername: "",
+                        iPassword: "",
+                        iName: "",
+                        iPhoneNumber: "",
+                        iLevel: "请选择职称",
+                        iDescription: "",
+                        nowUser: "null",
+                        type: "",
+                        index: 0,
+                        dests:[],
+                    },
+                    methods:
+                    {
+                        getRecord: function () {
+                            var params = new URLSearchParams();
+                            params.append('dataType', 'teacher');
+                            params.append('requestType', 'query');
+                            getAxios().post(getAtRqUrl() + 'request', params).then((response) => {
+                                this.teachers = [];
+                                var result = response.data;
+                                for (let i = 0; i < result.length; i++) {
+                                    var temp =
+                                    {
+                                        username: result[i].username,
+                                        password: result[i].password,
+                                        name: result[i].name,
+                                        sex: result[i].sex,
+                                        phone: result[i].phone,
+                                        level: result[i].level,
+                                        description: result[i].description,
+                                        signtime: fmtDate(result[i].signtime),
+                                        lastlogintime: fmtDate(result[i].lastlogintime)
+                                    };
+                                    this.teachers.push(temp);
+                                }
+                            });
+                            params = new URLSearchParams();
+                            params.append('dataType', 'allDests');
+                            params.append('requestType', 'query');
+                            getAxios().post(getAtRqUrl() + 'request', params).then((response) => {
+                                var result = response.data;
+                                this.dests = result;
+                                console.log(result);
+                            });
+                        },
+
+                        clicked: function (e) {
+                            if (!this.checkedRows.indexOf(e))
+                                this.checkedRows.push(e);
+                        },
+                        selectAll: function () {
+                            if (this.checkAll) {
+                                for (let i = 0; i < this.teachers.length; i++) {
+                                    this.checkedRows[i] = true;
+                                }
+                            }
+                            else {
+                                for (let i = 0; i < this.teachers.length; i++) {
+                                    this.checkedRows[i] = false;
+                                }
+                            }
+                        },
+                        deleSelected: function () {
+                            if (this.checkedRows.length === 0) {
+                                toastr.error("未选择数据");
+                            }
+                            else {
+                                $("#deleteModal").modal('show');
+                            }
+                        },
+                        confirmDelete: function () {
+                            var params = new URLSearchParams();
+                            var data = [];
+                            params.append('dataType', 'teacher');
+                            params.append('requestType', 'delete');
+                            for (var i = 0; i < this.checkedRows.length; i++) {
+                                data.push((this.teachers[i]).username);
+                            }
+                            console.log(data);
+                            params.append('data', data);
+                            getAxios().post(getAtRqUrl() + 'request', params).then((response) => {
+                                if (response.data === "success") {
+                                    for (var i = 0; i < this.checkedRows.length; i++) {
+                                        this.teachers.splice(i,1);
+                                    }
+                                    toastr.success("删除成功");
+                                }
+                                else {
+                                    toastr.success("删除失败");
+                                }
+                            });
+                        },
+                        addTeacher: function () {
+                            this.type = "add";
+                            $("#addTeacherModal").modal('show');
+                        },
+                        teacherSubmit: function (type) {
+                            var params = new URLSearchParams();
+                            params.append('dataType', 'teacher');
+                            if (this.type === "add")
+                                params.append('requestType', 'insert');
+                            else
+                                params.append('requestType', 'update');
+                            var temp =
+                            {
+                                username: this.iUsername,
+                                password: this.iPassword,
+                                name: this.iName,
+                                sex: $('input:radio:checked').val(),
+                                phone: this.iPhoneNumber,
+                                level: this.iLevel,
+                                description: this.iDescription
+                            };
+                            if (temp.username === "") {
+                                toastr.error("用户名不能为空");
+                            }
+                            else if (temp.password === "") {
+                                toastr.error("密码不能为空");
+                            }
+                            else if (temp.name === "") {
+                                toastr.error("姓名不能为空");
+                            }
+                            else if (temp.level === "请选择职称") {
+                                toastr.error("职称不能为空");
+                            }
+                            else if (temp.phone === "") {
+                                toastr.error("手机号不能为空");
+                            }
+                            else {
+                                params.append('data', JSON.stringify(temp, "UTF-8"));
+                                getAxios().post(getAtRqUrl() + 'request', params).then((response) => {
+                                    if (response.data === 'userExist') {
+                                        toastr.error("该用户已存在，请勿重复提交");
+                                    }
+                                    else if (response.data === 'failed') {
+                                        toastr.error("提交失败");
+                                    }
+                                    else {
+                                        if(this.type==="add")
+                                        {
+                                            this.teachers.push(temp);
+                                        }
+                                        else
+                                        {
+                                            this.teachers[this.index]=temp;
+                                        }
+                                      
+                                        toastr.error("提交成功");  
+                                        $("#addTeacherModal").modal('hide');
+                                    }
+                                });
+                            }
+                        },
+                        setHeadPic: function () {
+                            // var $input = $('<input/>');
+                            // $input.attr('type','file').attr('accept','image/*');
+                            // $input.click();
+                            // var path;
+                            // $input.on('change',function () {
+                            //     if(window.FileReader) {
+                            //         console.log($input[0].files[0]);
+                            //         var fr = new FileReader();
+                            //         var imagebase64 = fr.readAsDataURL($input[0].files[0]);
+                            //         console.log(imagebase64);
+                            //     }
+                            //     else {
+                            //         toastr.error("您的浏览器不支持FileReader");
+                            //     }
+                            //
+                            // });
+                        },
+                        level1: function () {
+                            this.iLevel = '讲师';
+                        },
+                        level2: function () {
+                            this.iLevel = "导师";
+                        },
+                        motify: function (index) {
+                            this.type = "update";
+                            this.index = index;
+                            this.iUsername = this.teachers[index].username;
+                            this.iPassword = this.teachers[index].password;
+                            this.iName = this.teachers[index].name;
+                            console.log( this.teachers[index].sex );
+                           // console.log($("input:radio[value='" + this.teachers[index].sex + "']"));
+                            $("input:radio[value='" + this.teachers[index].sex + "']").attr('checked', 'true');
+                            this.iPhoneNumber = this.teachers[index].phone;
+                            //  console.log(this.teachers[index].level);
+                            if (this.teachers[index].level !== undefined)
+                                this.iLevel = this.teachers[index].level;
+                            this.iDescription = this.teachers[index].description;
+                            $("#addTeacherModal").modal('show');
+                        },
+                        cleanModal: function () {
+                            this.iUsername = "";
+                            this.iPassword = "";
+                            this.iName = "";
+                            this.iPhoneNumber = "";
+                            this.iLevel = "请选择职称";
+                            this.iDescription = "";
+                        },
+                        generateId:function(index,type)
+                        {
+                            if(type==='t')
+                            {
+                                return "#mac"+index;
+                            }
+                            else
+                            {
+                                return "mac"+index;
+                            }
+                        },
+                        macInDests:function (index) {
+                            return this.dests[index].macs;
+                        },
+                        save:function (index,btn) {
+                            this.cancelPop(btn);
+                            var params = new URLSearchParams();
+                            params.append('dataType', 'dest');
+                            params.append('requestType', 'update');
+                            params.append('did',this.dests[index].did);
+                            params.append('longitude',this.dests[index].longitude);
+                            params.append('latitude',this.dests[index].latitude);
+                            getAxios().post(getAtRqUrl() + 'request', params).then((response) => {
+                                var result = response.data;
+                                if(result==='success') {
+                                    toastr.success("保存成功");
+                                }
+                                else{
+                                    toastr.error("保存失败");
+                                }
+                            });
+                        },
+                        cancelPop:function (obj) {
+                          obj.event.stopPropagation();
+                        },
+                        addMac:function (index) {
+                            console.log(index);
+                            $("#macAddModal").modal('show');
+                        },
+                    }
+                }
+            );
+            $record.getRecord();//初始化第一个界面
+            $("#addTeacherModal").on("hide.bs.modal", function () {
+                //console.log("清除modal");
+                $record.cleanModal();
+            })
+            $('a[data-toggle="tab"]').on('show.bs.tab', function (e) {
+                if (e.target.toString().includes("record")) {
+                    $record.getRecord();
+                }
+                else if (e.target.toString().includes("configure")) {
+
+                }
+                else if (e.target.toString().includes("alert")) {
+
+                }
+                else if (e.target.toString().includes("update")) {
+
+                }
+                else if (e.target.toString().includes("information")) {
+
+                }
+            });
+        }
+    </script>
+</head>
+
+<body>
+    <nav class="navbar navbar-default">
+        <div class="container-fluid">
+            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar">
+                <span class="sr-only">展开或关闭导航栏</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <div class="navbar-header">
+                <a class="navbar-brand">河南工业大学考勤系统-后台管理</a>
+            </div>
+            <div class="collapse navbar-collapse navbar-right " id="navbar">
+                <ul class="nav navbar-nav ">
+                    <li><a role="button" href="#record" data-toggle="tab">记录</a></li>
+                    <li><a role="button" href="#configure" data-toggle="tab">配置</a></li>
+                    <li><a role="button" href="#alert" data-toggle="tab">修改用户</a></li>
+                    <li><a role="button" href="#update" data-toggle="tab">更新</a></li>
+                    <li class="dropdown">
+                        <a class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true"
+                            aria-expanded="false">菜单<span class="caret"></span></a>
+                        <ul class="dropdown-menu">
+                            <li><a role="button" href="#information" data-toggle="tab">个人信息</a></li>
+                            <li><a role="button" onclick="logout();">退出登录</a></li>
+                            <li role="separator" class="divider"></li>
+                            <li><a role="button">Now:{{nowUser}}</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    <div class="container tab-content">
+        <div role="tabpanel" class="tab-pane active" id="record">
+            <div>
+                <div class="container">
+                    <div>
+                        <h2>教师信息 <button style="margin-left: 5px" type="button" class="btn btn-danger pull-right" @click="deleSelected">删除</button>
+                            <button type="button" class="btn btn btn-info pull-right" @click="addTeacher">添加</button></h2>
+                    </div>
+                    <hr>
+                </div>
+                <div class="container table-responsive">
+                    <table class=" table-striped table table-hover" >
+                        <tr style="font-size: 14px" style="text-align: center">
+                            <th><input type="checkbox" v-model="checkAll" @click="selectAll"> 全选</th>
+                            <th>用户名</th>
+                            <th>密码</th>
+                            <th>姓名</th>
+                            <th>性别</th>
+                            <th>手机号</th>
+                            <th>职称</th>
+                            <th>描述</th>
+                            <th>上次登录时间</th>
+                            <th>注册时间</th>
+                            <th>修改</th>
+                        </tr>
+                        <tbody>
+                        <tr v-for="(teacher,index) in teachers" :key="teacher.username">
+                            <td><input type="checkbox" @click="clicked(index)" v-model="checkedRows[index]"></td>
+                            <td>{{teacher.username}}</td>
+                            <td>{{teacher.password}}</td>
+                            <td>{{teacher.name}}</td>
+                            <td>{{teacher.sex}}</td>
+                            <td>{{teacher.phone}}</td>
+                            <td>{{teacher.level}}</td>
+                            <td>{{teacher.description}}</td>
+                            <td>{{teacher.lastlogintime}}</td>
+                            <td>{{teacher.signtime}}</td>
+                            <td><button type="button" class="btn btn-primary" @click="motify(index)">修改</button></td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div>
+                <div class="container">
+                    <div>
+                        <h2>地址信息</h2>
+                        <hr>
+                    </div>
+                </div>
+                <div class="container">
+                    <div v-for="(idest,index) in dests" :href="generateId(index,'t')" data-toggle="collapse"  class="thumbnail" style="padding-left: 30px;padding-right: 30px">
+                        <table width="100%">
+                            <tr>
+                                <td>
+                                    <h3>地点：{{idest.dest}} <button style="margin-left: 5px" type="button"  class="btn btn-primary pull-right" @click="save(index,this)">保存</button></h3>
+                                    <div class="form-group">
+                                        <label >经度：</label>
+                                        <input type="text" v-model="idest.longitude" class="form-control"  @click="cancelPop(this)">
+                                        <label >纬度：</label>
+                                        <input type="text" v-model="idest.latitude" class="form-control"  @click="cancelPop(this)">
+                                    </div>
+                                </td>
+                            </tr>
+                        </table>
+                        <div class="panel-body" >
+                            <div class="collapse" :id="generateId(index,'x')"  >
+                                <span class="container text-danger">Mac地址信息：</span>
+                                <table style="table-layout:fixed;margin-left: 20px" width="100%" v-for ="imac in macInDests(index)">
+                                    <tr>
+                                        <td class="text-info">
+                                            Mac: {{imac.mac}}
+                                        </td>
+                                        <td class="text-info">
+                                            db阈值：{{imac.db}}
+                                        </td>
+                                    </tr>
+                                </table>
+                                <button style="margin-top: 5px" @click="addMac(index)" class="btn btn-default pull-right">添加Mac地址</button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+            <div>
+
+                <div class="modal fade" id="macAddModal" tabindex="-1" role="dialog" aria-labelledby="modalLabel"
+                     aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">
+                                    &times;
+                                </button>
+                                <h4 class="modal-title">
+                                    添加Mac地址
+                                </h4>
+                            </div>
+                            <div class="modal-body">
+                                <div class="form-group">
+                                    <label for="longitude">Mac：</label>
+                                    <input type="text" id="inputMac" class="form-control">
+                                    <label for="latitude">可接受的信噪比：</label>
+                                    <input type="text" id="inputDb" class="form-control" >
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-default" data-dismiss="modal">关闭
+                                </button>
+                                <button @click="confirmDelete" type="button" class="btn btn-primary"
+                                        data-dismiss="modal">
+                                    提交
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal fade" id="deleteModal" tabindex="-1" role="dialog" aria-labelledby="modalLabel"
+                    aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">
+                                    &times;
+                                </button>
+                                <h4 class="modal-title" id="modalLabel">
+                                    删除
+                                </h4>
+                            </div>
+                            <div class="modal-body">
+                                此操作将不可逆转，请确认!
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-default" data-dismiss="modal">关闭
+                                </button>
+                                <button @click="confirmDelete" type="button" class="btn btn-primary"
+                                    data-dismiss="modal">
+                                    提交更改
+                                </button>
+                            </div>
+                        </div><!-- /.modal-content -->
+                    </div><!-- /.modal -->
+                </div>
+                <div class="modal fade" id="addTeacherModal" tabindex="-1" role="dialog" aria-labelledby="modalLabel"
+                    aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content" style="padding-left: 15px;padding-right: 15px">
+                            <div class="modal-header">
+                                <h4 class="modal-title">添加/修改
+                                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                                </h4>
+
+                            </div>
+                            <div class="modal-body">
+                                <div class="form-horizontal">
+                                    <div style="margin-left: 10px;margin-bottom: 15px">
+                                        <img class="form-groups img-responsive img-rounded"
+                                            style="width: 120px;height: 120px" v-bind:src="iHeadPic" @click="setHeadPic"
+                                            alt="头像" />
+                                    </div>
+                                </div>
+
+                                <div class="form-horizontal">
+                                    <label>教师用户名</label>
+                                    <input v-model="iUsername" v-if="type=='add'" class="form-control" type="text"
+                                        placeholder="请输入用户名">
+                                    <input v-model="iUsername" v-else class="form-control" disabled type="text"
+                                        placeholder="请输入用户名">
+                                </div>
+                                <div class="form-horizontal">
+                                    <label>教师密码</label>
+                                    <input v-model="iPassword" type="password" class="form-control" placeholder="请输入密码">
+                                </div>
+                                <div class="form-horizontal">
+                                    <div>
+                                        <label>教师姓名</label><input v-model="iName" class="form-control"
+                                            placeholder="请输入教师姓名">
+                                    </div>
+                                </div>
+                                <div class="form-horizontal">
+                                    <div>
+                                        <label>联系方式</label><input v-model="iPhoneNumber" class="form-control"
+                                            placeholder="请输入手机号">
+                                    </div>
+                                </div>
+
+                                <div class="form-horizontal" style="margin-top: 15px">
+                                    <!-- 这个地方不用v-model 有点麻烦，需要设置变量 -->
+                                    <label>性别</label>
+                                    <label>
+                                        <input type="radio" name="sex" checked id="boy" value="男">男
+                                    </label>
+                                    <label style="padding-left: 15px">
+                                        <input type="radio" name="sex" id="girl" value="女">女
+                                    </label>
+                                </div>
+                                <div class="form-horizontal">
+                                    <div class="dropdown">
+                                        <button class="btn btn-default dropdown-toggle" type="button" id="level"
+                                            data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                                            <!-- 绑定这个值直接上传 -->
+                                            {{iLevel}}
+                                            <span class="caret"></span>
+                                        </button>
+                                        <ul class="dropdown-menu" aria-labelledby="level">
+                                            <!-- 先这么写，后面再改成v-for -->
+                                            <li><a href="JavaScript:void(0)" @click="level1">讲师</a></li>
+                                            <li><a href="JavaScript:void(0)" @click="level2">导师</a></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <div class="form-horizontal">
+                                    <label style="margin-top: 20px">描述</label><textarea placeholder="输入一些有关教师的信息(选填)"
+                                        v-model="iDescription" style="resize:none" class="form-control"
+                                        rows="3"></textarea>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-success" @click="teacherSubmit()">确认提交</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div role="tabpanel" class="tab-pane" id="configure">配置</div>
+        <div role="tabpanel" class="tab-pane" id="alert">修改用户</div>
+        <div role="tabpanel" class="tab-pane" id="update">更新系统</div>
+        <div role="tabpanel" class="tab-pane" id="information">个人信息</div>
+    </div>
+</body>
+
+</html>

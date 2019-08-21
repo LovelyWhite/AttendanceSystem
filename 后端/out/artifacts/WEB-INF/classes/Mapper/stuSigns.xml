@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org/DTD Mapper 3.0" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="SignMapper">
+    <insert useGeneratedKeys="true" keyProperty="sid" keyColumn="sid" id="addSign" parameterType="Pojo.StuSign">
+        insert into stusigns values (null ,#{cid},#{nid},#{uid});
+    </insert>
+    <select id="selectSignsByCidAndNid" resultType="Pojo.StuSign" parameterType="Map">
+        select * from stusigns
+        where cid =#{cid} and nid =#{nid}
+    </select>
+    <select id="selectSignsByCid" resultType="Pojo.StuSign" parameterType="long">
+        select * from stusigns
+        where cid =#{cid}
+    </select>
+</mapper>

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org/DTD Mapper 3.0" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="CourseMapper">
+
+    <!-- 通过学生id找到他所有的课-->
+    <select id="selectCourses" resultType="Pojo.Course" parameterType="String">
+        select courseid,
+               tusername,
+               name,
+               currentweek,
+               property,
+               credit,
+               classweek,
+               workweek,
+               time,
+               description,
+               did,
+               isodd
+        from syllabus,
+             courses
+        where syllabus.uid = #{username}
+          AND syllabus.cid = courses.courseid;
+    </select>
+    <select id="selectCoursesByCids" resultType="Pojo.Course" parameterType="ArrayList">
+        select * from courses
+        where courseid in
+        <foreach collection="list" item="arr" open="("
+                 separator="," close=")">
+            #{arr}
+        </foreach>
+    </select>
+
+    <!--通过课程id找到课程所有信息-->
+    <select id="selectCourseByCid" resultType="Pojo.Course" parameterType="long">
+        select * from courses
+        where courseid = #{cid}
+    </select>
+    <insert id="addCourses" parameterType="Pojo.Course">
+        insert into courses values (#{courseid},#{tusername},#{name},#{currentweek},#{property},#{credit},#{classweek},#{workweek},#{time},#{description},#{did},null,#{isodd},0,0,null)
+        ON duplicate key
+                update courseid=#{courseid}
+    </insert>
+
+    <select id="selectCourseByTid" resultType="Pojo.Course" parameterType="String">
+        select * from courses where tusername like CONCAT('%',#{tusername},'%');
+    </select>
+    <select id="selectNidByCid" resultType="long" parameterType="long">
+        select nid from courses where courseid = #{cid};
+    </select>
+    <update id="updateSignTimeByCid" parameterType="long" >
+        update courses set signtime = signtime+1
+        where courseid = #{cid}
+    </update>
+    <update id="updateIngByCid" statementType="CALLABLE" parameterType="long" >
+        call updateIngByCid(#{cid});
+    </update>
+    <update id="updateStartTimeByCid" statementType="CALLABLE" parameterType="long" >
+        call updateStartTimeByCid(#{cid});
+    </update>
+    <update id="updateNidByCid" parameterType="Map" >
+        update courses set nid = #{nid}
+        where courseid = #{cid}
+    </update>
+</mapper>

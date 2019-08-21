@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org/DTD Mapper 3.0" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="MacMapper">
+    <update id="updateMac" parameterType="Pojo.Mac" >
+        update macs set mac = #{mac} where mid = #{mid}
+    </update>
+    <select id="selectAllMac" resultType="Pojo.Mac">
+        select * from macs;
+    </select>
+    <select id="selectMacByDid" parameterType="long" resultType="Pojo.Mac">
+        select * from macs where did =#{did}
+    </select>
+</mapper>

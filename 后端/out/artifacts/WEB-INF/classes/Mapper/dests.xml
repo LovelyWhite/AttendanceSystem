@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org/DTD Mapper 3.0" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="DestMapper">
+    <insert id="insertDest" parameterType="Pojo.Dest">
+        insert into dests values (#{did},#{dest},null,null)
+        ON duplicate key
+                update did=#{did}
+    </insert>
+    <select id="selectAllDest" resultType="Pojo.Dest">
+        select * from dests
+    </select>
+    <select id="selectDestByCid" parameterType="long" resultType="Pojo.Dest">
+        select dests.did,dests.dest,dests.longitude,dests.latitude,dests from dests,courses
+        where dests.did = courses.did and courses.courseid =  #{cid}
+    </select>
+    <select id="selectDestByDid" parameterType="long" resultType="Pojo.Dest">
+        select * from dests
+        where did=#{did}
+    </select>
+    <update id="updateDestByDid" parameterType="Pojo.Dest">
+        update dests set longitude=#{longitude},latitude = #{latitude}
+        where did =#{did}
+    </update>
+</mapper>

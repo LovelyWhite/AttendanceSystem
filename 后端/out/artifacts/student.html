@@ -1,0 +1,883 @@
+<html xmlns:v-on="http://www.w3.org/1999/xhtml" xmlns:v-bind="http://www.w3.org/1999/xhtml">
+
+<head>
+    <title>河南工业大学考勤系统-学生端</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta charset="UTF-8"> <!-- for HTML5 -->
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- BootStrap-->
+    <link rel="stylesheet" href="./bootstrap/css/bootstrap.css">
+    <link rel="stylesheet" href="./bootstrap/css/bootstrap-theme.min.css">
+    <script src="./jQuery/jquery-3.3.1.min.js"></script>
+    <script src="./bootstrap/js/bootstrap.js"></script>
+    <!-- vue -->
+    <script src="./vue/vue.min.js"></script>
+    <script src="./vue/vue-resource.min.js"></script>
+    <script src="./vue/axios.min.js"></script>
+    <!-- toastr -->
+    <link href="./toastr/toastr.min.css" rel="stylesheet" />
+    <script src="./toastr/toastr.min.js"></script>
+    <link href='./fullcalendar/packages/core/main.css' rel='stylesheet' />
+    <link href='./fullcalendar/packages/daygrid/main.css' rel='stylesheet' />
+    <link href='./fullcalendar/packages/timegrid/main.css' rel='stylesheet' />
+    <link href='./fullcalendar/packages/list/main.css' rel='stylesheet' />
+    <!-- ECharts单文件引入 -->
+    <script src="http://echarts.baidu.com/build/dist/echarts-all.js"></script>
+    <style>
+        /* 定义全局不可点击类 */
+        .noclick {
+            pointer-events: none;
+        }
+
+        /* 覆盖 .fc-content  的指针*/
+        .fc-content {
+            cursor: pointer;
+            padding: 4px;
+        }
+
+        .fc-content [data-full] {
+            display: none;
+        }
+    </style>
+    <script src='./fullcalendar/packages/core/main.js'></script>
+    <script src='./fullcalendar/packages/interaction/main.js'></script>
+    <script src='./fullcalendar/packages/daygrid/main.js'></script>
+    <script src='./fullcalendar/packages/timegrid/main.js'></script>
+    <script src='./fullcalendar/packages/list/main.js'></script>
+    <!-- baidu地图API -->
+    <!--
+    这里测试一下下载好的
+    <script src="./js/baidulocation.js"></script>
+    -->
+    <script type="text/javascript"
+        src="https://api.map.baidu.com/api?v=3.0&ak=x6LlNwuGYUOdgt8DxiwoLE0EKMnX2ojG"></script>
+    <script src="./js/gobalSetting.js"></script>
+    <script type="text/javascript">
+
+        window.onload = function () {
+
+            var loginData = JSON.parse(sessionStorage.getItem("loginData"));
+            console.log(loginData);
+            var videostream = null;
+
+            var $information = new Vue({
+                el: '#information',
+                data:
+                {
+                    iHeadPic: '',
+                    username: '',
+                    password: '',
+                    b_linkText: '更新信息',
+                    phone: '',
+                    schoolid: '',
+                    schoolpw: '',
+                },
+                methods:
+                {
+                    getLinkInformation: function () {
+                        if (this.schoolid === '') {
+                            toastr.error("请输入教务账号");
+                        }
+                        // else if (this.schoolpw === '') {
+                        //     toastr.error("请输入教务密码");
+                        // }
+                        else {
+                            var params = new URLSearchParams();
+                            params.append('option', 'getcourse');
+                            params.append("schoolid", this.schoolid);
+                            console.log(this.phone);
+                            params.append("phone", this.phone);
+                            // if( $('#boy').attr("checked")==='checked')
+                            //     params.append("sex", "男");
+                            // else
+                            //     params.append("sex", "女");
+                            this.b_linkText = "正在更新...";
+                            getAxios().post(getAtRqUrl() + 'linkschool', params).then((response) => {
+                                var result = response.data;
+                                if (result !== "failed") {
+                                    toastr.success("欢迎使用本系统！当前用户：" + result.name);
+                                    $information.initInformation();
+                                }
+                                else {
+                                    toastr.error("获取失败，请检查数据是否正确");
+                                }
+                                this.b_linkText = "更新信息";
+                            });
+                        }
+                    },
+                    initInformation: function () {
+                        var params = new URLSearchParams();
+                        params.append("dataType", "getLogin");
+                        params.append("requestType", "query");
+                        getAxios().post(getAtRqUrl() + "request", params).then((response) => {
+                            var data = response.data;
+                            $information.iHeadPic = data.pic,
+                                $information.username = data.name,
+                                $information.password = data.password,
+                                $information.phone = data.phone,
+                                $information.schoolid = data.schoolid,
+                                $("input:radio[value='" + data.sex + "']").attr('checked', 'true');
+                        });
+                    }
+                }
+            });
+            var $syllabus = new Vue({
+                el: '#syllabus',
+                data:
+                {
+                    calendar: null,
+                    data: 'nodata',
+                },
+                methods:
+                {
+                    //初始化课表信息
+                    getCourses: function () {
+                        var calendarEl = document.getElementById("table");
+                        this.calendar = new FullCalendar.Calendar(calendarEl, {
+                            plugins: ['interaction', 'timeGrid', 'list'],
+                            locale: 'zh-cn',
+                            buttonText: {
+                                today: '转到本周',
+                            },
+                            allDaySlot: false,
+                            minTime: "08:30:00",
+                            maxTime: "21:30:00",
+                            header: {
+                                right: 'today,prev,next',
+                                left: '',
+                            },
+                            handleWindowResize: false,
+                            allDay: false,
+                            firstDay: 1,
+                            validRange: {
+                                start: '2019-02-24',
+                                end: '2019-06-30'
+                            },
+                            navLinks: false,
+                            editable: false,
+                            events: function (info, successCallback, failureCallback) {
+                                var params = new URLSearchParams();
+                                params.append("dataType", "course");
+                                params.append("requestType", "query");
+                                params.append("start", info.start.valueOf());
+                                getAxios().post(getAtRqUrl() + "request", params).then((response) => {
+                                    var data = response.data;
+                                    if (data !== "nodata") {
+                                        successCallback(data);
+                                    }
+                                    else {
+                                        toastr.error("请更新课表信息~");
+                                    }
+                                    $("#syllabus").removeClass("noclick");
+                                });
+                            },
+                            //这种方式？？不支持跨域，我服了。
+                            // url: getAtRqUrl() + 'request',
+                            //     method: 'POST',
+                            //     extraParams: {
+                            //         dataType: 'course',
+                            //         requestType: 'query'
+                            //     },
+                            //     failure: function () {
+                            //         // if(message.xhr.response==='nodata')
+                            //         // {
+                            //         //     toastr.error("请更新课表信息~")
+                            //         // }
+                            //         $("#syllabus").removeClass("noclick");
+                            //     },
+                            //     success: function () {
+                            //         $("#syllabus").removeClass("noclick");
+                            //     }
+                            height: "auto",
+                            loading: function (isLoading) {
+                                if (isLoading) {
+                                    $("#syllabus").addClass("noclick");
+                                    if (sessionStorage.getItem("now") === "#syllabus")
+                                        toastr.success("加载课表信息~");
+                                }
+                            },
+                            eventClick: function (info) {
+                                $syllabus.calendar.changeView('list', { start: info.event.start, end: info.event.end });
+                                $(".fc-list-view").on('click', function () {
+                                    $syllabus.calendar.changeView("timeGridWeek");
+                                    var $tab = $(".fc-view.fc-timeGridWeek-view.fc-timeGrid-view");
+                                    $tab.addClass("table-responsive");
+                                    $tab.children("table").css("min-width", "1000px");
+                                });
+                                $("button.fc-today-button").attr("disabled", "disabled");
+                            }
+                        });
+                    }
+
+                }
+            });
+            var $punch = new Vue({
+                el: '#punch',
+                data:
+                {
+                    //  iHeadPic: "./image/headPic.jpg"
+                    video: null,
+                    changeText: '显示定位',
+                    img: null,
+                    lng :113.548672,
+                    lat:34.833033,
+                    signDid:'',
+                    signCid:'',
+                    signTid:'',
+                    signTime:'',
+                    signNid:'',
+                    signData:'',
+                },
+                methods:
+                {
+                    getCamera: function () {
+                        var constraints = { audio: false, video: { width: 300, height: 300, facingMode: "user" } };
+                        navigator.mediaDevices.getUserMedia(constraints).then(function (stream) {
+                            this.video = document.getElementById("video");
+                            videostream = stream;
+                            this.video.srcObject = stream;
+                            this.video.addEventListener("click", function () {
+                                this.play();
+                            });
+                        }).catch(function (err) {
+                            console.log(err.name + ": " + err.message);
+                        });
+
+                    },
+                    stop: function () {
+                        videostream && videostream.getTracks().forEach(function (track) {
+                            track.stop();
+                        });
+                    },
+                    change: function () {
+                        var $map = $('#mapcontainer');
+                        if ($map.css("display") === 'none') {
+                            $('#video').fadeOut(300, function () {
+                                $map.fadeIn();
+                            });
+                            //因为为加载错误，必须等几秒
+                            setTimeout(function () {
+                                $navbar.markMap();
+                            },2000);
+                            toastr.info("点击左下角定位按钮获取定位~");
+                            this.changeText = '显示影像';
+                        }
+                        else {
+                            $map.fadeOut(300, function () {
+                                $('#video').fadeIn();
+                            });
+                            toastr.info("点击图标开启摄像头~");
+                            this.changeText = '显示定位';
+                        }
+                    },
+                    punch: function () {
+                        if ($navbar.punchNum === 1) {
+                            var canvas = document.createElement('canvas');
+                            var canvasc = document.createElement('canvas');
+                            canvas.width = 300;
+                            canvas.height = 300;
+                            canvasc.width = 150;
+                            canvasc.height = 150;
+                            var ctx = canvas.getContext('2d');
+                            ctx.drawImage(document.getElementById("video"), 0, 0, 300, 300);
+                            canvasc.getContext('2d').drawImage(canvas, 0, 0, 150, 150);
+                            var params = new URLSearchParams();
+                            params.append("dataType", "sign");
+                            params.append("requestType", "query");
+                            params.append("lng",this.lng);
+                            params.append("lat",this.lat);
+                            params.append("did",this.signDid);
+                            params.append("cid",this.signCid);
+                            params.append("tid",this.signTid);
+                            params.append("nid",this.signNid);
+                            params.append("username",loginData.data.username);
+                            params.append("dataImg", canvasc.toDataURL("image/png"));
+                            getAxios().post(getAtRqUrl() + 'request', params).then((response) => {
+
+                                if (response.data === 'notInArea') {
+                                    toastr.error("未在指定区域");
+                                }
+                                else if (response.data === 'success') {
+                                    toastr.success("签到成功");
+                                }
+                                else if(response.data === 'failed') {
+                                    toastr.error("不是本人");
+                                }
+                                else if(response.data==='pic not has face')
+                                {
+                                    toastr.error("未识别到人脸");
+                                }
+                                else if(response.data==='outOfDate')
+                                {
+                                    toastr.error("签到已过期,请联系老师");
+                                }
+                                else
+                                {
+                                    toastr.error(response.data);
+                                }
+                            }).catch((error) => {
+                                toastr.error("未知错误" + error);
+                            });
+                        }
+                        else
+                        {
+                            toastr.error("当前没有老师发起签到");
+                        }
+                    }
+                },
+            });
+            var $class = new Vue({
+                el: '#class',
+                data:
+                {
+                    classId: "",
+                    stu: [],
+                },
+                methods:
+                {
+                    getClassStu: function () {
+                        var params = new URLSearchParams();
+                        params.append('dataType', 'getClassStu');
+                        params.append('requestType', 'query');
+                        getAxios().post(getAtRqUrl() + 'request', params).then((response) => {
+                            var result = response.data;
+                            if (result !== "noData") {
+                                $class.classId = result[0].classid;
+                                $class.stu = result;
+                            }
+                            else {
+                                toastr.error("获取失败");
+                            }
+                        });
+                    }
+                },
+            });
+            var $statistics = new Vue({
+                    el: "#statistics",
+                    data:
+                        {
+                            stuAb:[]
+                        },
+                    methods:
+                        {
+                            initChart: function () {
+                                var params = new URLSearchParams();
+                                params.append("dataType", "classAbTime");
+                                params.append("requestType", "query");
+                                params.append("uid",loginData.data.username);
+                                getAxios().post(getAtRqUrl() + "request", params).then((response) => {
+                                    console.log(response.data);
+                                    this.stuAb = response.data;
+                                    var abChart = echarts.init(document.getElementById('abTimeChart'));
+                                    var option = {
+                                        title: {
+                                            text: '各个课程签到情况',
+                                        },
+                                        tooltip: {
+                                            show: true,
+                                            trigger: 'axis',
+                                        },
+                                        grid: {
+                                            x:30,
+                                            y:50,
+                                            x2:30,
+                                            y2:200,
+                                            containLabel: true
+                                        },
+                                        xAxis: [
+                                            {
+                                                type: 'category',
+                                                name: '课程',
+                                                data: $statistics.getCategory(),
+                                                //["高数","线代","形势与政策"]//课程名称
+                                                splitLine: {
+                                                    show: false
+                                                },
+                                                axisTick: {
+                                                    alignWithLabel: true
+                                                },
+                                                axisLabel:
+                                                    {
+                                                        interval: 0,
+                                                        rotate: 75,
+                                                    },
+                                            },
+
+                                        ],
+
+                                        yAxis: [
+                                            {
+                                                type: 'value',
+                                                name: '次数',
+                                            }
+                                        ],
+                                        series: [{
+                                            "name": " 签到数",
+                                            "type": "bar",
+                                            label: {
+                                                normal: {
+                                                    show: true,
+                                                    position: 'top'
+                                                }
+                                            },
+                                            itemStyle: {
+                                                normal: {
+                                                    // 随机显示颜色
+                                                    color: function () {
+                                                        return "#b58aff";
+                                                    }
+                                                },
+                                            },
+                                            dataZoom: [
+                                                {
+                                                    id: 'dataZoomX',
+                                                    type: 'slider',
+                                                    xAxisIndex: [0],
+                                                    filterMode: 'filter'
+                                                },
+                                            ],
+                                            "data": $statistics.getValue()
+                                        }]
+                                    };
+                                    // 为echarts对象加载数据
+                                    setTimeout(function () {
+                                        abChart.setOption(option);
+                                        abChart.resize();
+                                    },200)
+                                });
+
+
+                            },
+                            getCategory: function () {
+                                var x = [];
+                                for (let i = 0; i < this.stuAb.length; i++) {
+                                    var tname = this.stuAb[i].name+"("+this.stuAb[i].totaltime+")";
+                                    x.push(tname);
+                                }
+                                return x;
+                            },
+                            getValue: function () {
+                                var x = [];
+                                for (let i = 0; i < this.stuAb.length; i++) {
+                                    x.push(this.stuAb[i].stime);
+                                }
+                                return x;
+                            }
+                        },
+
+            });
+            var $notice = new Vue({
+                    el:"#notice",
+                    data:
+                        {
+                            signData:[],
+                            infoData:[],
+                        },
+                    methods:
+                        {
+                            getUnRead:function () {
+                                var params = new URLSearchParams();
+                                params.append('requestType', 'query');
+                                params.append("dataType", "unRead");
+                                getAxios().post(getAtRqUrl() + 'request', params).then((response) => {
+                                    var result = response.data;
+                                    console.log(result);
+                                    if (result !== "failed"&&result!=="noData") {
+                                        for (let i = 0; i < result.length; i++) {
+                                            result[i].data = JSON.parse(result[i].data);
+                                            console.log(result[i].time);
+                                            if (result[i].type === 'startSign') {
+                                                $notice.signData.push(result[i]);
+                                            }
+                                            else {
+                                                $notice.infoData.push(result[i]);
+                                            }
+                                        }
+                                    }
+                                    if(this.signData.length!==0) {
+                                       if(this.signData[0].outdate!==1)
+                                       {
+                                           $navbar.punchNum = 1;
+                                           $punch.signDid = this.signData[0].data.did;
+                                           $punch.signCid = this.signData[0].data.courseid;
+                                           $punch.signTid = this.signData[0].sendUsername;
+                                           $punch.signTime = this.signData[0].data.signtime;
+                                           $punch.signNid = this.signData[0].nid;
+                                           $punch.signData = this.signData[0].data.name+"   "+this.signData[0].data.description.split(",")[4];
+                                           toastr.info("课程："+this.signData[0].data.name+"正在签到，开始时间："+new Date(this.signData[0].time));
+                                       }
+                                    }
+                                });
+                            },
+                        }
+                });
+            //定义navbar中的数据变动以及所有vue的初始化
+            //一些定义操作
+            var $navbar = new Vue({
+                el: "#navbar",
+                data:
+                {
+                    punchNum: 0,
+                    noticeNum: 0,
+                    loggedName:"",
+                },
+                methods:
+                {
+                    init: function () {
+                        this.loggedName =loginData.data.name;
+                        $notice.getUnRead();
+                    },
+
+                    markMap:function()
+                    {
+                        if($notice.tData1!=="")
+                        {
+                            var poi = JSON.parse($notice.signData[0].extra);
+                            console.log(poi[0]);
+                            console.log(poi[1]);
+                            console.log(poi[2]);
+                            var signPoint = new BMap.Point(parseFloat(poi[0]), parseFloat(poi[1]));
+                            var circle = new BMap.Circle(signPoint,parseFloat(poi[2]),{strokeColor:"blue", strokeWeight:2, strokeOpacity:0.5}); //创建圆
+                            //  console.log(circle);
+                            map.clearOverlays();
+                            map.addOverlay(circle);
+                            map.panTo(signPoint);
+                        }
+                    }
+                }
+
+            });
+            // 绑定每个标签载入之前的操作
+            // 定义重新刷新的操作
+            // 将上次的标签信息存入sessionStorage
+            //必须先初始化地图，给后面的定位做准备
+            var map = new BMap.Map("baidumap");
+            map.centerAndZoom(new BMap.Point(113.548672, 34.833033), 17);
+            //  map.setMinZoom(18);
+            var geolocation = new BMap.Geolocation();
+            geolocation.enableSDKLocation();
+            var geolocationControl = new BMap.GeolocationControl({ offset: new BMap.Size(5, 8) });
+            geolocationControl.addEventListener("locationSuccess", function (e) {
+                geolocationControl.C.onclick = function () {
+                    map.clearOverlays();
+                };
+                var address = '';
+                address += e.addressComponent.province;
+                address += e.addressComponent.city;
+                address += e.addressComponent.district;
+                address += e.addressComponent.street;
+                address += e.addressComponent.streetNumber;
+                // $punch.lng = e.point.lng;
+                // $punch.lat = e.point.lat;
+                // toastr.info(e.point.lng+"  "+e.point.lat);
+                toastr.success("当前定位地址为：" + address);
+            });
+            geolocationControl.addEventListener("locationError", function (e) {
+                toastr.error(e.message);
+            });
+            map.addControl(geolocationControl);
+            $navbar.init();
+            $('body').fadeIn(250);
+            {
+
+                var $nav = $("#navbar");
+                $nav.on("show.bs.tab", "[href='#punch']", function () {
+                    $punch.getCamera();
+                });
+
+                $syllabus.getCourses();
+                $nav.on("show.bs.tab", "[href='#syllabus']", function (e) {
+
+                    if (!e.relatedTarget || sessionStorage.getItem("now")) {
+                        setTimeout(function () {
+                            $syllabus.calendar.render();
+                            var $tab = $(".fc-view.fc-timeGridWeek-view.fc-timeGrid-view");
+                            $tab.addClass("table-responsive");
+                            $tab.children("table").css("min-width", "1000px");
+                        }, 300);
+                    }
+                    sessionStorage.removeItem("now");
+                    $punch.stop();
+                });
+                $nav.on("show.bs.tab", "[href='#information']", function () {
+                    $information.initInformation();
+                });
+                $nav.on("show.bs.tab", "[href='#class']", function () {
+                    $class.getClassStu();
+                    $punch.stop();
+                });
+                $nav.on("show.bs.tab", "[href='#notice']", function () {
+                    $punch.stop();
+                });
+                $nav.on("show.bs.tab", "[href='#statistics']", function () {
+                    $statistics.initChart();
+                    $punch.stop();
+                });
+            }
+            // console.log( sessionStorage.getItem("now"));
+            // console.log(sessionStorage.getItem("now") === null);
+            if (sessionStorage.getItem("now") === null || sessionStorage.getItem("now") === 'undefined') {
+                $nav.find("[href='#syllabus']").tab('show');
+            }
+            else {
+                //这里没办法，如果不先展现syllabus的话则会导致加载错乱。
+                //只能show出来
+                //废弃这个方法，使用 加载那个页面之后刷新一下
+                //最后还是用了setTimeOut方法。
+                // $nav.find("[href='#syllabus']").tab('show');
+                // setTimeout(function () {
+                //     if($syllabus.calendar)
+                //     {
+                //         $syllabus.calendar.render();
+                //     }
+                // },300);
+                $nav.find("[href=\'" + sessionStorage.getItem("now") + "\']").tab('show');
+
+            }
+            $("#tabcontainer").on("click", function () {
+                $nav.collapse('hide');
+            });
+            $("#navbar a[data-toggle='tab']").on("click", function () {
+                $nav.collapse('hide');
+            });
+            //定义click 操作缓存刷新当前页面
+            var tabhref;
+            window.onbeforeunload = function () {
+                sessionStorage.setItem("now", tabhref);
+            };
+            $nav.on("click", "[data-toggle='tab']", function () {
+                tabhref = this.getAttribute("href");
+            });
+            //接受消息
+            {
+                var uuid = sessionStorage.getItem("socketUUID");
+                var socket = new WebSocket(getWsAddress() + uuid + "/"+null+"/"+null);
+                /*
+                      *socket 传送协议
+                      * 返回数据格式
+                      *   type(请求类型):inf(通知) punch(签到)
+                      *   data(数据):object
+                      */
+                //初始化过后socket接受推送消息
+                socket.onmessage = function (ev) {
+                    var r = ev.data;
+                   // console.log(r);
+                    var rt = JSON.parse(r);
+                    var rType = rt.type;
+                    var rData = rt.data;
+                    if(rType === "request")
+                    {
+                        if(rData === "logout")
+                        {
+                            toastr.info("当前账号在其它地方登录");
+                            logout();
+                        }
+                    }
+                    else if(rType==="startSign")
+                    {
+                        var tData1 = JSON.parse(rData);//外层data（发送信息）
+                        var tData2 = JSON.parse(tData1.data);//内层data（课程信息）
+                        var poi = JSON.parse(tData1.extra);
+                        console.log(poi[0]);
+                        console.log(poi[1]);
+                        console.log(poi[2]);
+                        var signPoint = new BMap.Point(parseFloat(poi[0]), parseFloat(poi[1]));
+                        var circle = new BMap.Circle(signPoint,parseFloat(poi[2]),{strokeColor:"blue", strokeWeight:2, strokeOpacity:0.5}); //创建圆
+                        map.clearOverlays();
+                        map.addOverlay(circle);
+                        setTimeout(function () {
+                            map.panTo(signPoint);
+                        },1);
+                        $navbar.punchNum=1;
+                        toastr.info("您有新的签到");
+                        $punch.signDid = tData2.did;
+                        $punch.signCid = tData2.courseid;
+                        $punch.signTid = tData1.sendUsername;
+                        $punch.signTime = tData2.signtime;
+                        $punch.signNid = tData1.nid;
+                        $punch.signData = tData2.name+"   "+tData2.description.split(",")[4];
+                        toastr.info("课程："+tData2.name+"正在签到，开始时间："+new Date(tData2.time));
+                    }
+
+                };
+            }
+        }
+    </script>
+</head>
+
+<body>
+    <nav class="navbar navbar-default">
+        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar">
+            <span class="sr-only">切换导航</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+        </button>
+        <div class="container-fluid">
+            <div class="navbar-header">
+                <a class="navbar-brand">河南工业大学考勤系统-学生端 </a>
+            </div>
+            <div class="collapse navbar-collapse navbar-right" id='navbar'>
+                <ul class="nav navbar-nav">
+                    <li><a href="#syllabus" data-toggle="tab">课表</a></li>
+                    <li><a href="#class" data-toggle="tab">班级</a></li>
+                    <li><a href="#statistics" data-toggle="tab">统计</a></li>
+                    <li><a href="#punch" data-toggle="tab">签到 <span class="badge"
+                                v-if="punchNum!==0">{{punchNum}}</span></a></li>
+                    <li><a href="#notice" data-toggle="tab">通知 <span class="badge"
+                                v-if="noticeNum!==0">{{noticeNum}}</span></a></li>
+                    <li class="dropdown">
+                        <a class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true"
+                            aria-expanded="false">菜单<span class="caret"></span></a>
+                        <ul class="dropdown-menu">
+                            <li><a href="#information" data-toggle="tab">个人信息</a></li>
+                            <li><a role="button" onclick="logout();">退出登录</a></li>
+                            <li role="separator" class="divider"></li>
+                            <li><a href="#">当前账号：{{loggedName}}</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div id="tabcontainer" class="container tab-content" style="margin-bottom: 40px">
+        <div role="tabpanel" class="tab-pane" id="syllabus">
+            <div class="container">
+                <h2>课程安排</h2>
+                <hr>
+                <div id="table">
+                </div>
+            </div>
+
+        </div>
+        <div role="tabpanel" class="tab-pane" id="punch">
+            <div class="container">
+                <h2>签到   <small>{{signData}}</small></h2>
+                <hr>
+                <video class="center-block" autoplay poster="./image/camera.png" width="300" height="300" id="video"
+                    style="width: 300px;height: 300px; border: cadetblue 2px dashed;display: flow-root; border-radius:10px;"></video>
+                <div class="center-block" id="mapcontainer" style="width: 300px;height: 300px;display: none">
+                    <div id="baidumap"
+                        style=" width: 300px;height: 300px;border-radius:10px;border: cadetblue 2px dashed;"></div>
+                </div>
+                <table class="center-block" style="margin-top: 20px;width: 300px">
+                    <tr>
+                        <td>
+                            <button type="button" v-on:click="change" class="btn btn-info">{{changeText}}</button>
+                        </td>
+                        <td style="padding-left: 10px">
+                            <button type="button" class="btn btn-danger" v-on:click="punch">点击签到</button>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        <div role="tabpanel" class="tab-pane" id="class">
+            <div class="container">
+                <h2>班级信息</h2>
+                <hr>
+                <div class="thumbnail">
+
+                    <div style="padding-left: 20px;padding-right:10px">
+                        <h3>{{classId}}</h3>
+                    </div>
+                    <hr>
+                    <div class="panel-body" style="padding-top: 0;" v-for="item in stu">
+                        {{item.name}}
+                        {{item.schoolid}}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div role="tabpanel" class="tab-pane" id="statistics">
+            <div class="container">
+                <h2>统计</h2>
+                <hr>
+                <div id="abTimeChart" style="height:600px;width: 100%"></div>
+            </div>
+
+        </div>
+        <div role="tabpanel" class="tab-pane" id="notice">
+            <div class="container">
+                <h2>签到通知</h2>
+                <hr>
+                <div v-for="(item,index)  in signData">
+                    <div class="thumbnail">
+                        <div class="panel-body">
+                            <h4>{{item.data.name}}<small style="padding-left: 10px">第{{item.data.signtime-1}}次签到</small></h4>
+                            <div class="pull-right">
+                                <span v-if="item.outdate==1">过期</span>
+                                <span v-else>未过期</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <h2>提醒通知</h2>
+                <hr>
+                <div v-for="(item,index)  in infoData">
+                    <div class="thumbnail">
+                        <div class="panel-body">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div role="tabpanel" class="tab-pane" id="information">
+            <div class="container">
+                <h2>个人信息</h2>
+                <hr>
+                <div class="container" style="max-width: 600px">
+                    <div class="form-inline">
+                        <div class="form-group" style="margin-right: 60px;">
+                            <img class="img-responsive img-rounded"
+                                style="width: 144px;height: 192px;margin-bottom: 15px" v-bind:src="iHeadPic" alt="头像" />
+                        </div>
+                        <div class="form-group">
+                            <div>
+                                <label>用户名&nbsp</label>
+                                <input v-model="username" class="form-control" disabled type="text">
+                            </div>
+                            <div style="margin-right: 40px;margin-top: 25px">
+                                <!-- 这个地方不传值通过网络获取 -->
+                                <label>性别&nbsp</label>
+                                <label style="margin-right: 15px">
+                                    <input type="radio" name="sex" id="boy" value="男" disabled="disabled">男
+                                </label>
+                                <label>
+                                    <input type="radio" name="sex" id="girl" value="女" disabled="disabled">女
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>密码</label>
+                        <input v-model="password" type="password" class="form-control" placeholder="请输入密码">
+                    </div>
+                    <div class="form-group">
+                        <label>联系方式</label>
+                        <input v-model="phone" type="number" class="form-control" placeholder="请输入手机号码">
+                    </div>
+                    <span class="container text-danger">注意！以下信息将被用于获取课程信息</span>
+                    <div class="form-group">
+                        <label>教务系统账号</label>
+                        <input v-model="schoolid" type="text" class=" form-control" placeholder="教务系统账号">
+                    </div>
+                    <div class="form-group">
+                        <label>教务系统密码</label>
+                        <input v-model="schoolpw" disabled type="password" class="form-control" placeholder="教务系统密码">
+                    </div>
+                    <button id="getLinkInformation" @click="getLinkInformation"
+                        class="btn btn-default">{{b_linkText}}</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-footer">
+        <div class="container pull-right">
+            <span><a href="https://lovelywhite.cn">&copy; LovelyWhite.cn 2019</a></span>
+        </div>
+    </div>
+</body>
+
+</html>

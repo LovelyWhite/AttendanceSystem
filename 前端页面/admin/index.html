@@ -1,0 +1,102 @@
+<html>
+
+<head>
+    <title>河南工业大学考勤系统-后台管理</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta charset="UTF-8"> <!-- for HTML5 -->
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- BootStrap-->
+    <link rel="stylesheet" href="../bootstrap/css/bootstrap.css">
+    <link rel="stylesheet" href="../bootstrap/css/bootstrap-theme.min.css">
+    <script src="../jQuery/jquery-3.3.1.min.js"></script>
+    <script src="../bootstrap/js/bootstrap.js"></script>
+    <!-- vue -->
+    <script src="../vue/vue.min.js"></script>
+    <script src="../vue/vue-resource.min.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <!-- toastr -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <script src="../js/gobalSetting.js"></script>
+    <style>
+        .form-group input {
+            margin-bottom: 12px;
+        }
+    </style>
+    <script>
+        window.onload= function () {
+            new Vue(
+                {
+                    el: '#submit',
+                    data:
+                        {
+                            username:'',
+                            password:''
+                        },
+
+                    methods:
+                        {
+                            form_submit:function () {
+                                var params = new URLSearchParams();
+                                params.append("username",this.username);
+                                params.append("password",this.password);
+                                params.append("userType","管理员");
+                                if(this.username==="")
+                                {
+                                    toastr.error("用户名不能为空");
+                                }
+                                else if(this.password ==="")
+                                {
+                                    toastr.error("密码不能为空");
+                                }
+                                else
+                                {
+                                    getAxios().post(getAtRqUrl() + 'verify', params).then((response) => {
+                                        var  data = response.data;
+                                        if (data.status === 'pwError') {
+                                            toastr.error("密码错误");
+
+                                        }
+                                        else if (data.status === 'unError') {
+                                            toastr.error("账户不存在");
+                                        }
+                                        else {
+                                            toastr.success("登录成功");
+                                            setTimeout(() => {
+                                                location.href = "./admin.html";
+                                            }, 700);
+                                        }
+                                    }).catch((error) => {
+                                    });
+                                }
+                            }
+                        }
+                }
+            );
+        }
+    </script>
+</head>
+
+<body>
+    <nav class="navbar navbar-default navbar-static-top">
+        <div class="container">
+            <a class="navbar-brand">管理登录</a>
+        </div>
+
+    </nav>
+    <div class="container" style="margin-top: 30px">
+        <img class="center-block" style="max-width: 150px;max-height: 150px;margin-bottom: 15px"  src="../image/lock.png">
+        <form id="submit" method="post" class="form-signin center-block" style="max-width: 400px;">
+            <div class="form-group">
+
+                <input v-model="username" autofocus="autofocus" type="text" class="form-control"  placeholder="管理员账号">
+                <input v-model="password" type="password" class="form-control"  placeholder="管理员密码">
+                <div class="pull-right">
+                    <button type="button" v-on:click="form_submit" class="btn btn-default">登录</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</body>
+
+</html>

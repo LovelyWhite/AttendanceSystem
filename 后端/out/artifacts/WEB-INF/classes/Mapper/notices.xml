@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org/DTD Mapper 3.0" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="NoticeMapper">
+    <resultMap id="NoticeResultMap" type="Pojo.Notice">
+        <result property="data" column="data" typeHandler="TypeHandler.NoticeTypeHandler"/>
+        <result property="extra" column="extra" typeHandler="TypeHandler.NoticeTypeHandler"/>
+    </resultMap>
+    <insert useGeneratedKeys="true" keyProperty="nid" keyColumn="nid" id="addNotice" parameterType="Pojo.Notice">
+        insert into notices  values(null,#{type},#{sType},#{sendUsername},#{sendType},#{recvUsername},#{recvType},#{data},CURRENT_TIMESTAMP(),#{extra},0)
+    </insert>
+    <select id="selectNoticesByNid" parameterType="ArrayList" resultMap="NoticeResultMap">
+        select * from notices where nid in
+        <foreach collection="list" item="arr" open="("
+                 separator="," close=")">
+            #{arr.nid}
+        </foreach>
+        order by ${"time DESC"}
+    </select>
+    <update  id="updateOutDateByNid" parameterType="long">
+        update notices set outdate = 1
+        where nid = #{nid};
+    </update>
+    <select id="selectOutDateByNid" resultType="Pojo.Unread" parameterType="long">
+        select outdate from notices where nid = #{nid} and outdate=1;
+    </select>
+</mapper>

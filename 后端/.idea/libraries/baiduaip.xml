@@ -1,0 +1,11 @@
+<component name="libraryTable">
+  <library name="baiduaip">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/lib/dom4j-2.1.1.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/fastjson-1.2.56.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/aip-java-sdk-4.3.2.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

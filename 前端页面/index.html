@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <title>河南工业大学考勤系统</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta charset="UTF-8">
+    <!-- for HTML5 -->
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- BootStrap-->
+    <link rel="stylesheet" href="./bootstrap/css/bootstrap.css">
+    <link rel="stylesheet" href="./bootstrap/css/bootstrap-theme.min.css">
+    <script src="./jQuery/jquery-3.3.1.min.js"></script>
+    <script src="./bootstrap/js/bootstrap.js"></script>
+    <!-- vue -->
+    <script src="./vue/vue.min.js"></script>
+    <script src="./vue/vue-resource.min.js"></script>
+    <script src="./vue/axios.min.js"></script>
+    <!-- toastr -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <script src="./js/gobalSetting.js"></script>
+    <script>
+
+        var result;
+        window.onload = function () {
+            if (typeof androidAppProxy !== "undefined") {
+                var a = androidAppProxy.getWifiList();
+            } else {
+                toastr.info("未使用移动设备，某些功能暂时无效~");
+            }
+            var $login = new Vue(
+                {
+                    el: '#login',
+                    data:
+                    {
+                        userType: "学生",
+                        username: '',
+                        password: '',
+                        passwordre: '',
+                        b_log: "登陆",
+                        b_reg: "注册"
+                    },
+                    methods:
+                    {
+                        stu: function () {
+                            this.userType = '学生';
+                        },
+                        tea: function () {
+                            this.userType = '教师';
+                        },
+                        form_submit: function () {
+                            var check = 3;
+                            //获取三个DOM节点
+                            var $i_username = $('#username');
+                            var $i_password = $('#password');
+                            var $i_repw = $('#repw');
+                            var $b_login = $('#b_login');
+                            if (check === 3) {
+                                var a = setInterval(() => {
+                                    check--;
+                                    if (check <= 0) {
+                                        check = 3;
+                                        clearInterval(a);
+                                    }
+                                }, 1000);
+                                if (this.username === '') {
+                                    toastr.error("用户名不能为空");
+                                }
+                                else if (this.password === '') {
+                                    toastr.error("密码不能为空");
+                                }
+                                else {
+                                    //  $b_login.button('loading');
+                                    var params = new URLSearchParams();
+                                    params.append('username', this.username);
+                                    params.append('password', this.password);
+                                    params.append('userType', this.userType);
+                                    if ($i_repw.css('display') === 'none') {
+                                        getAxios().post(getAtRqUrl() + 'verify', params).then((response) => {
+                                            console.log(response.data);
+                                            sessionStorage.setItem("loginData", JSON.stringify(response.data));
+                                            //console.log(sessionStorage.getItem("loginData"));
+                                            var data = response.data;
+                                            if (data.status === 'pwError') {
+                                                toastr.error("密码错误");
+                                            }
+                                            else if (data.status === 'unError') {
+                                                toastr.error("不存在此用户");
+                                            }
+                                            else if (data.status === 'success') {
+
+                                                //登录成功开启Socket
+                                                var socket = new WebSocket(getWsAddress() + data.uuid + "/" + data.data.username + "/" + data.userType);
+                                                socket.onmessage = function (ev) {
+                                                    if (JSON.parse(ev.data).data === "socketEstablish") {
+                                                        toastr.success("登陆成功");
+                                                        socket.close();
+                                                        sessionStorage.setItem("socketUUID", data.uuid);
+                                                        //跳转
+                                                        setTimeout(function () {
+                                                            if ($login.userType === "学生") {
+                                                                $('body').fadeOut(300, function () {
+                                                                    window.location.href = './student.html';
+                                                                });
+                                                            }
+                                                            if ($login.userType === "教师") {
+                                                                $('body').fadeOut(300, function () {
+                                                                    window.location.href = './teacher.html';
+                                                                });
+                                                            }
+                                                        }, 1000);
+                                                    }
+                                                    else {
+                                                        toastr.error("Socket未建立连接");
+                                                    }
+                                                };
+
+                                            }
+                                            else {
+                                                toastr.error("啊哦，未知错误~");
+                                            }
+                                        }).catch((error) => {
+
+                                        });
+                                    }
+                                    else {
+                                        if (this.password !== this.passwordre) {
+                                            toastr.error("两次密码不一致");
+                                        }
+                                        else {
+                                            getAxios().post(getAtRqUrl() + 'register', params).then((response) => {
+                                                if (response.data === 'userExist') {
+                                                    toastr.error("用户已存在");
+                                                }
+                                                else if (response.data === 'failed') {
+                                                    toastr.error("注册失败");
+                                                }
+                                                else if (response.data === 'success') {
+                                                    toastr.success("注册成功");
+                                                }
+                                                else {
+                                                    toastr.error("啊哦，未知错误~");
+                                                }
+                                            }).catch((error) => {
+                                            });
+                                        }
+                                    }
+                                    //$b_login.button('reset');
+                                }
+                            }
+                            else {
+                                toastr.error("请等待" + (3 - check) + "秒再试");
+                            }
+                        },
+                        register: function () {
+                            var $repw = $('#repw');
+                            if ($repw.css('display') === 'none') {
+                                $('#select').attr("disabled", true);
+                                this.userType = '学生';
+                                $repw.fadeIn(250);
+                                this.b_log = "申请";
+                                this.b_reg = "取消";
+                            }
+                            else {
+                                $('#select').attr("disabled", false);
+                                $repw.fadeOut(250);
+                                this.passwordre = '';
+                                this.b_log = "登陆";
+                                this.b_reg = "注册";
+                            }
+                        },
+                    },
+
+                }
+            );
+            setTimeout(function () {
+                $('#login').fadeIn('slow');
+            }, 500);
+        };
+    </script>
+    <style>
+        .form-group input {
+            margin-bottom: 12px;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar-default navbar-static-top">
+        <div class="container">
+            <a class="navbar-brand">河南工业大学考勤系统</a>
+            <a class="btn btn-default pull-right btn-xs " role="button" onclick="$('body').fadeOut(300,function() {
+               window.location.href='./admin/index.html';
+               });" style="cursor: pointer;margin-top: 15px;opacity: 0.7">后台管理</a>
+        </div>
+
+    </nav>
+    <div class="container" style="display: none" id="login">
+        <form method="POST">
+            <div class="center-block" style="margin-bottom: 40px; margin-top: 50px">
+                <img src="./image/title.png" width="400px" height="120px" class="center-block img-responsive"
+                    alt="河南工业大学考勤系统" />
+            </div>
+            <div class="center-block" style="max-width: 400px;">
+                <div class="form-group">
+                    <div class="input-group">
+                        <label for="username" class="sr-only">用户名</label>
+                        <input id="username" autofocus="autofocus" v-model="username"
+                            style="border-top-left-radius: 5px;border-bottom-left-radius:5px;" name="username"
+                            type="text" placeholder="在此处输入用户名" class=" form-control">
+                        <div class="input-group-btn">
+                            <button id="select" type="button" class="btn btn-default dropdown-menu-right"
+                                style="border-top-right-radius: 5px; border-bottom-right-radius:5px;"
+                                data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <span>{{userType}}</span>
+                                <span class="caret"></span>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-right">
+                                <li><a href="JavaScript:void(0)" v-on:click="stu">学生</a></li>
+                                <li><a href="JavaScript:void(0)" v-on:click="tea">教师</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="password" class="sr-only">密码</label>
+                    <input id="password" v-model="password" name="password" type="password" placeholder="在此处输入密码"
+                        class="form-control">
+                </div>
+                <div class="form-group" hidden id="repw">
+                    <label for="passwordre" class="sr-only">重新输入密码</label>
+                    <input id="passwordre" v-model="passwordre" name="passwordre" type="password" placeholder="再次输入密码"
+                        class="form-control">
+                </div>
+
+                <div class=" form-group">
+                    <button v-on:click="form_submit" type="button" id="b_login" data-loading-text="正在执行.."
+                        class="btn btn-success ">{{b_log}}</button>
+                    <button id="b_register" type="button" name="b_register" v-on:click="register"
+                        class="btn btn-info">{{b_reg}}</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</body>
+
+</html>

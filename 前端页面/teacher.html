@@ -1,0 +1,468 @@
+<html>
+
+<head>
+    <title>河南工业大学考勤系统-教师端</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta charset="UTF-8"> <!-- for HTML5 -->
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <!-- BootStrap-->
+    <link rel="stylesheet" href="./bootstrap/css/bootstrap.css">
+    <link rel="stylesheet" href="./bootstrap/css/bootstrap-theme.min.css">
+    <script src="./jQuery/jquery-3.3.1.min.js"></script>
+    <script src="./bootstrap/js/bootstrap.js"></script>
+    <!-- vue -->
+    <script src="./vue/vue.min.js"></script>
+    <script src="./vue/vue-resource.min.js"></script>
+    <script src="./vue/axios.min.js"></script>
+    <!-- toastr -->
+    <link href="./toastr/toastr.min.css" rel="stylesheet" />
+    <script src="./toastr/toastr.min.js"></script>
+    <script src="./js/gobalSetting.js"></script>
+</head>
+<script>
+    /*
+              *socket 传送协议
+              * 返回数据格式
+              *   type(请求类型):inf(通知) punch(签到)
+              *   data(数据):object
+              */
+    window.onload = function () {
+        var loginData = JSON.parse(sessionStorage.getItem("loginData"));
+        // console.log(sessionStorage.getItem("socketUUID"));
+        var $course = new Vue({
+                el: "#course",
+                data:
+                {
+                    courses:[],
+                    time:'',
+                    startTime:'',
+                    interval:[],
+                    button:[],
+                    status:'',
+                    signStatus:'',
+                    cid:'',
+                    buttonDis:[],
+                },
+                methods:
+                {
+                    startSign:function(index,btn)
+                    {
+                        var d =
+                            {
+                                type:"startSign",
+                                data:
+                                    {
+                                        sType:"all",
+                                        sendUsername:loginData.data.username,
+                                        sendType:"教师",
+                                        // recvUsername:null,
+                                        recvType:"学生",
+                                        data: this.courses[index].courseInformation.courseid,
+                                    }
+                            };
+                        socket.send(JSON.stringify(d));
+                        $course.$set($course.button, index, "停止签到");
+                        for(let i = 0;i<this.status.length;i++)
+                        {
+                            if(i!==index)
+                            {
+                                console.log(i);
+                                $course.$set($course.buttonDis,i, "true");
+                            }
+                        }
+                        $course.$set($course.status, index, "stop");
+                        $course.$set($course.startTime,index,(new Date()).valueOf());
+                        $course.interval[index] = setInterval(function () {
+                            $course.$set($course.time, index, Math.round(((new Date()).valueOf() - $course.startTime[index]) / 1000));
+                        }, 1000);
+                        btn.event.stopPropagation();
+                    },
+                    getCourse:function()
+                    {
+
+                        var params = new URLSearchParams();
+                        params.append("dataType", "teacherCourses");
+                        params.append("requestType", "query");
+                        getAxios().post(getAtRqUrl() + "request", params).then((response) => {
+                            var data = response.data;
+                            $course.time=new Array(data.length);
+                            $course.startTime=new Array(data.length);
+                            $course.button=new Array(data.length);
+                            $course.status = new Array(data.length);
+                            $course.interval = new Array(data.length);
+                            $course.courses =data;
+                            console.log($course.courses);
+                            $course.signStatus = [];
+                            for(let i =0;i<data.length;i++)
+                            {
+                                var length =data[i].students.length;
+                                this.signStatus[i] = new Array(length);
+                                for(let j = 0;j<length;j++)
+                                {
+                                    $course.$set($course.signStatus[i],j, "未签到");
+                                }
+                            }
+                            for (let i = 0; i < $course.courses.length; i++) {
+                                if ($course.courseInformation(i).ing === 1) {
+                                    $course.$set($course.startTime, i, $course.courses[i].courseInformation.starttime);
+                                    $course.$set($course.button, i, "停止签到");
+                                    $course.$set($course.status, i, "stop");
+                                    $course.nid = $course.courses[i].courseInformation.nid;
+                                    console.log(       $course.cid = $course.courses[i].courseInformation.courseid);
+                                    $course.cid = $course.courses[i].courseInformation.courseid;
+                                    $course.getCurrentSigns(i);
+                                    $course.interval[i] = setInterval(function () {
+                                        $course.$set($course.time, i, Math.round(((new Date()).valueOf() - $course.startTime[i]) / 1000));
+                                    }, 1000);
+                                }
+                                else {
+                                    $course.$set($course.button, i, "开始签到");
+                                    $course.$set($course.status, i, "start");
+                                    $course.$set($course.time, i, 0);
+                                }
+                            }
+
+                        });
+                    },
+                    getCurrentSigns:function(index)
+                    {
+
+                        var params = new URLSearchParams();
+                        params.append("dataType", "stuCurrentSigns");
+                        params.append("requestType", "query");
+                        params.append("nid", $course.nid);
+                        params.append("cid",$course.cid);
+                        getAxios().post(getAtRqUrl() + "request", params).then((response) => {
+                            var data = response.data;
+                            console.log(data);
+                            var datl= data.length;
+                            for(let x = 0;x<datl;x++)
+                            {
+                                var coul = $course.courses.length;
+                                for(let i = 0;i<coul;i++)
+                                {
+                                    console.log("开始");
+                                    if(data[x].cid === $course.courses[i].courseInformation.courseid)
+                                    {
+                                        console.log("找到班级");
+                                        var stul = $course.courses[i].students.length;
+                                        for(let j = 0;j<stul;j++)
+                                        {
+                                            var un =$course.courses[i].students[0].username;
+                                            if(data[x].uid==un)
+                                            {
+                                                console.log("找到学生");
+                                                $course.$set($course.signStatus[i],j, "已签到");
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                            for(let i = 0;i<this.status.length;i++) {
+                                if (i !== index) {
+                                    console.log(i);
+                                    $course.$set($course.buttonDis, i, "true");
+                                }
+                            }
+                        //console.log($course.signStatus);
+                    },
+                    getallSign:function()
+                    {
+                        var params = new URLSearchParams();
+                        params.append("dataType", "stuAllSign");
+                        params.append("requestType", "query");
+                    },
+                    stop:function(index,btn)
+                    {
+                        $course.$set($course.button,index,"开始签到");
+                        $course.$set($course.status,index,"start");
+                        for(let i = 0;i<this.status.length;i++)
+                        {
+                                $course.$set($course.buttonDis,i, "false");
+                        }
+                        clearInterval($course.interval[index]);
+                        $course.$set($course.time, index, 0);
+                        $course.$set($course.courses[index].courseInformation,'signtime',$course.courses[index].courseInformation.signtime+1 );
+                        var d =
+                            {
+                                type:"stopSign",
+                                data:
+                                    {
+                                        sType:"all",
+                                        sendUsername:loginData.data.username,
+                                        sendType:"教师",
+                                        // recvUsername:null,
+                                        recvType:"学生",
+                                        data: this.courses[index].courseInformation.courseid,
+                                    }
+                            };
+                        socket.send(JSON.stringify(d));
+                        btn.event.stopPropagation();
+
+                    },
+                    stuInCourses:function (index) {
+                        return this.courses[index].students;
+                    },
+                    courseInformation:function (index) {
+                        return this.courses[index].courseInformation;
+                    },
+                    generateId:function(index,type)
+                    {
+                        if(type==='t')
+                        {
+                            return "#student"+index;
+                        }
+                        else if(type==='x')
+                        {
+                            return "student"+index;
+                        }
+                        else if(type==='b')
+                        {
+                            return "startBtn"+index;
+                        }
+                    }
+                },
+
+            });
+        var $statistics = new Vue({
+                el: "#statistics",
+                data:
+                {
+
+                },
+                methods:
+                {
+
+                }
+            });
+        var $notice = new Vue({
+                el: "#notice",
+                data:
+                {
+
+                },
+                methods:
+                {
+
+                }
+            });
+        var $information = new Vue({
+                el: "#information",
+                data:
+                {
+
+                },
+                methods:
+                {
+
+                }
+            });
+        //定义navbar中的数据变动以及所有vue的初始化
+        //一些定义操作
+        var $navbar = new Vue({
+            el: "#navbar",
+            data:
+            {
+                loggedName:""
+            },
+            methods:
+            {
+                init: function () {
+                    this.loggedName =loginData.data.name;
+                }
+            }
+        });
+
+        // 绑定每个标签载入之前的操作
+        // 定义重新刷新的操作
+        // 将上次的标签信息存入sessionStorage
+        $navbar.init();
+        $('body').fadeIn(250);
+        {
+            var $nav = $("#navbar");
+            $nav.on("show.bs.tab", "[href='#course']", function () {
+                $course.getCourse();
+            });
+            $nav.on("show.bs.tab", "[href='#statistics']", function () {
+
+            });
+            $nav.on("show.bs.tab", "[href='#notice']", function () {
+
+            });
+            $nav.on("show.bs.tab", "[href='#information']", function () {
+
+            });
+        }
+
+        // console.log( sessionStorage.getItem("now"));
+        // console.log(sessionStorage.getItem("now") === null);
+        if (sessionStorage.getItem("now") === null || sessionStorage.getItem("now") === 'undefined') {
+            $nav.find("[href='#course']").tab('show');
+        }
+        else {
+            $nav.find("[href=\'" + sessionStorage.getItem("now") + "\']").tab('show');
+        }
+        $("#tabcontainer").on("click", function () {
+            $nav.collapse('hide');
+        });
+        $("#navbar a[data-toggle='tab']").on("click", function () {
+            $nav.collapse('hide');
+        });
+        //定义click 操作缓存刷新当前页面
+        var tabhref;
+        window.onbeforeunload = function () {
+            sessionStorage.setItem("now", tabhref);
+        };
+        $nav.on("click", "[data-toggle='tab']", function () {
+            tabhref = this.getAttribute("href");
+        });
+        /*
+        *socket 传送协议
+        * 返回数据格式
+        *   type(请求类型):inf(通知) punch(签到)
+        *   data(数据):object
+        */
+        var uuid = sessionStorage.getItem("socketUUID");
+        var socket = new WebSocket(getWsAddress() + uuid + "/" + null + "/" + null);
+        socket.onmessage = function (ev) {
+            var r = ev.data;
+            // console.log(r);
+            var rt = JSON.parse(r);
+            var rType = rt.type;
+            var rData = rt.data;
+            if(rType === "signSuccess")
+            {
+                var vData = JSON.parse(rData);
+                var cid = vData.cid;
+                var uid = vData.uid;
+                console.log(vData);
+                var courses = $course.courses;
+                for(let i =0;i<courses.length;i++)
+                {
+                    if(courses[i].courseInformation.courseid===cid)
+                    {
+                        for(let j = 0;j<courses[i].students.length;j++)
+                        {
+                            console.log(courses[i].students[j].username);
+                            if(courses[i].students[j].username ==uid)
+                            {
+                                console.log(uid+ "签到");
+                                $course.$set($course.signStatus[i],j, "已签到");
+                            }
+                        }
+                    }
+                }
+
+            }
+            if(rType==="inf")
+            {
+              if(rData==="stopSignSuccess")
+              {
+                  toastr.success("停止签到成功");
+              }
+            }
+            else if(rType==="startSignResult")
+            {
+                $course.nid = rData;
+                toastr.success("开始签到成功");
+            }
+        };
+        socket.onopen = function (ev) {
+            console.log(ev);
+        };
+        socket.onerror =function (ev) {
+            console.log(ev);
+        }
+        socket.onclose=function (ev) {
+            console.log(ev)
+        }
+
+    }
+</script>
+
+<body>
+    <nav class="navbar navbar-default ">
+        <div class="container-fluid">
+            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar">
+                <span class="sr-only">切换导航</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <div class="navbar-header">
+                <a class="navbar-brand">河南工业大学考勤系统-教师端 </a>
+            </div>
+            <div>
+                <div class="collapse navbar-collapse navbar-right " id='navbar'>
+                    <ul class="nav navbar-nav">
+                        <li><a href="#course" data-toggle="tab">课程</a></li>
+                        <li><a href="#statistics" data-toggle="tab">统计</a></li>
+                        <li><a href="#notice" data-toggle="tab">通知</a></li>
+                        <li class="dropdown">
+                            <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button"
+                                aria-haspopup="true" aria-expanded="false">菜单<span class="caret"></span></a>
+                            <ul class="dropdown-menu">
+                                <li><a href="#information" data-toggle="tab">个人信息</a></li>
+                                <li><a onclick="logout();" data-toggle="tab">退出登录</a></li>
+                                <li role="separator" class="divider"></li>
+                                <li><a href="#">当前账号：{{loggedName}}</a></li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+    <div id="tabcontainer" class="container tab-content" style="margin-bottom: 40px">
+
+        <div role="tabpanel" class="tab-pane" id="course">
+            <div class="container">
+                <h2>课程</h2>
+                <hr>
+                <div v-for="(item,i)  in courses">
+                    <div :href="generateId(i,'t')" data-toggle="collapse"  class="thumbnail">
+                        <div style="padding-left: 20px;padding-right:10px">
+                            <h3>{{courseInformation(i).name}} <small>周{{courseInformation(i).classweek}}第{{courseInformation(i).time}}节</small>
+                                <div class="pull-right"><small>{{item.stuNum}} 位同学</small> <span class="caret"></span>
+                                    <button :id="generateId(i,'b')" @click="status[i]==='start'?startSign(i,this):stop(i,this)" class="btn btn-danger" v-bind:disabled="buttonDis[i]=='true'" v-text="button[i]"></button></div> </h3>
+                            <h5> 已进行过 {{courseInformation(i).signtime}} 次签到 <small> 已用时间：{{time[i]}} 秒</small></h5>
+                        </div>
+                        <div class="panel-body">
+                            <div :id="generateId(i,'x')" class="collapse">
+                                <div v-for =" (item,j) in stuInCourses(i)">
+                                        <hr>
+                                        <div>{{item.name}} <span class="pull-right">{{signStatus[i][j]}}</span></div>
+                                        <div><small>{{item.schoolid}}</small></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div role="tabpanel" class="tab-pane" id="statistics">
+            <div class="container">
+                <h2>统计</h2>
+                <hr>
+            </div>
+        </div>
+        <div role="tabpanel" class="tab-pane" id="notice">
+            <div class="container">
+                <h2>通知</h2>
+                <hr>
+            </div>
+        </div>
+        <div role="tabpanel" class="tab-pane" id="information">
+            <h2>个人信息</h2>
+            <hr>
+        </div>
+    </div>
+    <div class="modal-footer">
+        <div class="container pull-right">
+            <span><a href="https://lovelywhite.cn">&copy; LovelyWhite.cn 2019</a></span>
+        </div>
+    </div>
+</body>
+
+</html>

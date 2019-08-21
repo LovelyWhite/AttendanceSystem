@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration
+        PUBLIC "-//mybatis.org//DTD Utils.Config 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<!-- 根标签 -->
+<configuration>
+
+    <!-- 环境，可以配置多个，default：指定采用哪个环境 -->
+    <environments default="local">
+        <!-- id：唯一标识 -->
+        <environment id="local">
+            <!-- 事务管理器，JDBC类型的事务管理器 -->
+            <transactionManager type="JDBC" />
+            <!-- 数据源，池类型的数据源 -->
+            <dataSource type="POOLED">
+                <property name="driver" value="com.mysql.cj.jdbc.Driver" />
+                <property name="url" value="jdbc:mysql://at.lovelywhite.cn:3306/attendancesystem?serverTimezone=GMT%2B8&amp;zeroDateTimeBehavior=CONVERT_TO_NULL&amp;characterEncoding=UTF-8" />
+                <property name="username" value="root" />
+                <property name="password" value="***"/>
+            </dataSource>
+        </environment>
+    </environments>
+
+    <mappers>
+        <mapper resource="Mapper/users.xml"/>
+        <mapper resource="Mapper/teachers.xml"/>
+        <mapper resource="Mapper/admins.xml"/>
+        <mapper resource="Mapper/courses.xml"/>
+        <mapper resource="Mapper/syllabus.xml"/>
+        <mapper resource="Mapper/classes.xml"/>
+        <mapper resource="Mapper/plugins.xml"/>
+        <mapper resource="Mapper/notices.xml"/>
+        <mapper resource="Mapper/unreads.xml"/>
+        <mapper resource="Mapper/macs.xml"/>
+        <mapper resource="Mapper/dests.xml"/>
+        <mapper resource="Mapper/stuSigns.xml"/>
+    </mappers>
+</configuration>
